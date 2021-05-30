@@ -1,0 +1,247 @@
+version: "3.7"
+services:
+  reverse-proxy:
+    container_name: reverse-proxy
+    image: harbor.chlin.tk/nginx/reverse-proxy:${TAG}
+    logging:
+      driver: json-file
+      options:
+        max-file: "10"
+        max-size: "100m"
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ./conf.d:/etc/nginx/conf.d/
+      - /etc/letsencrypt:/etc/letsencrypt
+      - ./cert/harbor_cert:/etc/cert
+      - ./cert/product:/etc/letsencrypt/product
+    ports:
+      - 80:80
+      - 443:443
+    restart: always
+    networks: 
+      - nginx
+  resume:
+    container_name: resume
+    image: harbor.chlin.tk/vue/resume:latest
+    volumes:
+      - /etc/localtime:/etc/localtime
+    environment:
+      - IS_LOADED=LOAD_ENV_FILE_SUCCESS
+      - PORT=3000
+    ports:
+      - 3000:3000
+    restart: always
+    networks: 
+      - nginx
+  linebot:
+    container_name: linebot
+    image: harbor.chlin.tk/python/linebot:latest
+    volumes:
+      - /etc/localtime:/etc/localtime
+      - ~/volumes/linebot:/usr/src/app/logs
+    ports:
+      - 3001:3001
+    restart: always
+    networks: 
+      - nginx
+    environment:
+      - TZ=Asia/Taipei
+      - IS_LOADED=LOAD_ENV_FILE_SUCCESS
+      - PORT=3001
+      - SERVER_IP=127.0.0.1
+      - LOG_LEVEL=INFO
+      - LOG_FOLDER_PATH=logs/
+      - DOCKER_NETWORK='alpine-net'
+      - RESUME_HEALTH_API='https://resume-chlin.herokuapp.com/healthckeck'
+      - AVALON_HEALTH_API='https://avalon-chlin.herokuapp.com/healthcheck'
+      - REDIS_PORT=6379
+  websocket:
+    image: harbor.chlin.tk/java/websocket:54646f4-20210528-0409 
+    container_name: websocket
+    environment:
+      - TZ=Asia/Taipei
+    volumes:
+      # - ~/volumes/websocket:/usr/src/app/logs
+      - /etc/localtime:/etc/localtime:ro
+    ports: 
+      - 3002:8080
+    restart: always
+    networks: 
+      - nginx
+  websocket-ui:
+    image: harbor.chlin.tk/vue/websocket-ui:latest
+    container_name: websocket-ui
+    ports: 
+      - 3003:3003
+    restart: always
+    networks: 
+      - nginx
+  avalon:
+    image: harbor.chlin.tk/vue/avalon:latest 
+    container_name: avalon
+    restart: always
+    environment:
+      - PORT=3004
+    ports: 
+      - "3004:3004"
+    networks: 
+      - nginx
+  wedding:
+    container_name: wedding
+    image: harbor.chlin.tk/vue/wedding:8548fb0_20210407120454
+    volumes:
+      - /etc/localtime:/etc/localtime
+    ports:
+      - 8050:8050
+    restart: always
+    networks: 
+      - nginx
+  university-demo:
+    image: harbor.chlin.tk/python/university-demo:latest
+    container_name: university-demo
+    environment:
+      - TZ=Asia/Taipei
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ~/volumes/university:/usr/src/app/logs
+      - ~/volumes/university/upload:/usr/src/app/university/upload
+      - ~/.ssh/known_hosts:/root/.ssh/known_hosts
+    ports: 
+      - 3012:3012
+    environment:
+      - IS_LOADED=LOAD_ENV_FILE_SUCCESS
+      - PORT=3012
+      - LOG_LEVEL=INFO
+      - LOG_FOLDER_PATH=logs/
+    restart: always
+    networks: 
+      - nginx
+  university:
+    image: harbor.chlin.tk/python/university:d5f93b7-20210401-0054
+    container_name: university
+    environment:
+      - TZ=Asia/Taipei
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ~/volumes/university:/usr/src/app/logs
+      - ~/volumes/university/upload:/usr/src/app/university/upload
+      - ~/.ssh/known_hosts:/root/.ssh/known_hosts
+    ports: 
+      - 8336:8336
+    environment:
+      - IS_LOADED=LOAD_ENV_FILE_SUCCESS
+      - PORT=8336
+      - LOG_LEVEL=INFO
+      - LOG_FOLDER_PATH=logs/
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost:8336/healthCheck || exit 1"]
+      interval: 60s
+      timeout: 10s
+      start_period: 10s
+    restart: always
+    networks: 
+      - nginx
+  fb:
+    image: harbor.chlin.tk/python/fb:fb-test
+    container_name: fb
+    environment:
+      - TZ=Asia/Taipei
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ~/volumes/fb:/usr/src/app/logs
+    ports: 
+      - 3010:3010
+    env_file:
+      - emoti.env
+    environment:
+      - IS_LOADED=LOAD_ENV_FILE_SUCCESS
+      - PORT=3010
+      - LOG_LEVEL=INFO
+      - LOG_FOLDER_PATH=logs/
+    restart: always
+    networks: 
+      - nginx
+  fbt:
+    image: harbor.chlin.tk/python/fb:fb-test
+    container_name: fbt
+    environment:
+      - TZ=Asia/Taipei
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ~/volumes/fbt:/usr/src/app/logs
+    ports: 
+      - 3011:3011
+    env_file:
+      - dev.env
+    environment:
+      - IS_LOADED=LOAD_ENV_FILE_SUCCESS
+      - PORT=3011
+      - LOG_LEVEL=INFO
+      - LOG_FOLDER_PATH=logs/
+    restart: always
+    networks: 
+      - nginx
+  btc:
+    image: harbor.chlin.tk/python/btc:latest
+    container_name: btc
+    environment:
+      - TZ=Asia/Taipei
+      - IS_LOADED=LOAD_ENV_FILE_SUCCESS
+      - PORT=3007
+      - LOG_LEVEL=INFO
+      - LOG_FOLDER_PATH=logs/
+    volumes:
+      - ~/volumes/btc:/usr/src/app/logs
+      - ~/etc/timezone:/etc/localtime:ro
+    ports:
+      - 3007:3007
+  vote:
+    image: harbor.chlin.tk/python/vote:8d8530f-20210310-1843 
+    container_name: vote
+    environment:
+      - TZ=Asia/Taipei
+      - IS_LOADED=LOAD_ENV_FILE_SUCCESS
+      - PORT=8333
+      - LOG_LEVEL=INFO
+      - START_TIME=23
+      - END_TIME=0
+      - CALL_DIRECTION=outbound
+      - LOG_FOLDER_PATH=logs/
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ~/volumes/vote:/usr/src/app/logs
+    ports: 
+      - 8333:8333
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost:8333/healthCheck || exit 1"]
+      interval: 60s
+      timeout: 10s
+      start_period: 10s
+    restart: always
+    networks: 
+      - nginx
+  mysql:
+    image: mysql:5.7
+    container_name: mysql
+    restart: always
+    volumes:
+      - ~/volumes/mysql:/var/lib/mysql
+    environment:
+    ports:
+      - "172.17.0.1:3306:3306"
+    networks:
+      - nginx
+  redis:
+    restart: always
+    container_name: redis-linch
+    image: redis:5.0.5-alpine 
+    ports:
+      - "172.17.0.1:6379:6379"
+    volumes:
+      - ~/volumes/redis-data:/data
+    networks: 
+      - nginx
+networks:
+  nginx:
+    external: true
+    name: nginx
